@@ -43,5 +43,4 @@ If szkopul being down has personally wronged you, you're welcome here. PRs open.
 ## License
 
 MIT
-**czywyjebalohomika.xyz** answers the one question that unites every Polish OI contestant:
 
