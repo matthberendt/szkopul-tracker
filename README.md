@@ -25,7 +25,7 @@ You know the drill. It's 11 PM, the contest ends in an hour, you're trying to su
 
 ## Tech stack
 
-- **Node.js** — because someone had to write this and it wasn't going to be in Java
+- **Node.js** because someone had to write this and it wasn't going to be in Java
 
 ## Running locally
 
