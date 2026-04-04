@@ -8,7 +8,7 @@
 
 ## What is this?
 
-A dead simple status checker for [szkopul.edu.pl](https://szkopul.edu.pl) — the Polish competitive programming judge that has a... complicated relationship with uptime.
+A dead simple status checker for [szkopul.edu.pl](https://szkopul.edu.pl) the Polish competitive programming judge that has a... complicated relationship with uptime.
 
 You know the drill. It's 11 PM, the contest ends in an hour, you're trying to submit, and szkopul is just gone. No explanation. No ETA. Just vibes.
 
