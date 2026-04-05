@@ -29,6 +29,24 @@ function saveDB() {
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
 }
 
+function getUptimePercent() {
+    const now = Date.now();
+    const totalMs = now - new Date(TRACKING_START).getTime();
+    if (totalMs <= 0) return 100;
+
+    let downtimeMs = 0;
+    for (const d of db.downtimeRankings) {
+        downtimeMs += d.durationMs;
+    }
+
+    // if currently down, add ongoing downtime
+    if (!db.isUp) {
+        downtimeMs += now - new Date(db.lastCrashTime).getTime();
+    }
+
+    const pct = ((totalMs - downtimeMs) / totalMs) * 100;
+    return Math.max(0, Math.min(100, pct));
+}
 
 async function isHealthy() {
     const controller = new AbortController();
@@ -90,6 +108,7 @@ app.get('/api/status', (_req, res) => {
         lastCrashTime: db.lastCrashTime,
         lastRecoveryTime: db.lastRecoveryTime,
         downtimeCount: db.downtimeRankings.length,
+        uptimePercent: getUptimePercent(),
     });
 });
 
