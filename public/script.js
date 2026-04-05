@@ -7,10 +7,12 @@ const NAMES = [
 let lastCrashDate = new Date();
 let isCrashed = false;
 let crashCount = 0;
+let uptimePercent = 0;
 let lang = 'PL';
 
 // --- DOM refs ---
 const $status   = document.getElementById('status');
+const $dot      = document.getElementById('status-dot');
 const $days     = document.getElementById('days-since');
 const $daysText = document.getElementById('days-since-text');
 const $hours    = document.getElementById('hours');
@@ -19,17 +21,37 @@ const $seconds  = document.getElementById('seconds');
 const $counter  = document.getElementById('counter');
 const $color    = document.getElementById('color');
 const $lang     = document.getElementById('lang');
+const $pct      = document.getElementById('uptime-pct');
+const $ringFg   = document.querySelector('.ring-fg');
+
+const CIRCUMFERENCE = 2 * Math.PI * 52; // r=52
 
 // --- Fetch ---
 async function fetchStatus() {
   try {
-    const { isUp, lastCrashTime, downtimeCount } = await (await fetch('/api/status')).json();
-    isCrashed = !isUp;
-    lastCrashDate = new Date(lastCrashTime);
-    crashCount = downtimeCount;
+    const data = await (await fetch('/api/status')).json();
+    isCrashed = !data.isUp;
+    lastCrashDate = new Date(data.lastCrashTime);
+    crashCount = data.downtimeCount;
+    uptimePercent = data.uptimePercent;
+    updateRing();
     updateCounter();
   } catch {
     $status.textContent = 'Lost connection! 📡';
+  }
+}
+
+// --- Ring ---
+function updateRing() {
+  const pct = Math.min(100, Math.max(0, uptimePercent));
+  const offset = CIRCUMFERENCE - (pct / 100) * CIRCUMFERENCE;
+  $ringFg.style.strokeDashoffset = offset;
+  $pct.textContent = pct.toFixed(2) + '%';
+
+  if (isCrashed) {
+    $ringFg.classList.add('down');
+  } else {
+    $ringFg.classList.remove('down');
   }
 }
 
@@ -55,11 +77,13 @@ function updateCounter() {
   const name = NAMES[crashCount % NAMES.length];
 
   if (isCrashed) {
+    $dot.classList.add('down');
     $status.textContent = lang === 'PL'
         ? `Chomik nr.${crashCount}, pseudonim ${name}, umarł.`
         : `Hamster nr.${crashCount}, codename ${name}, has died.`;
     $counter.hidden = true;
   } else {
+    $dot.classList.remove('down');
     $status.textContent = lang === 'PL'
         ? `Chomik nr.${crashCount}, pracuje ile może`
         : `Hamster nr.${crashCount}, is working hard`;
