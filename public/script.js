@@ -22,9 +22,6 @@ const $counter  = document.getElementById('counter');
 const $color    = document.getElementById('color');
 const $lang     = document.getElementById('lang');
 const $pct      = document.getElementById('uptime-pct');
-const $ringFg   = document.querySelector('.ring-fg');
-
-const CIRCUMFERENCE = 2 * Math.PI * 52; // r=52
 
 // --- Fetch ---
 async function fetchStatus() {
@@ -41,18 +38,10 @@ async function fetchStatus() {
   }
 }
 
-// --- Ring ---
+// --- Uptime ---
 function updateRing() {
   const pct = Math.min(100, Math.max(0, uptimePercent));
-  const offset = CIRCUMFERENCE - (pct / 100) * CIRCUMFERENCE;
-  $ringFg.style.strokeDashoffset = offset;
-  $pct.textContent = pct.toFixed(2) + '%';
-
-  if (isCrashed) {
-    $ringFg.classList.add('down');
-  } else {
-    $ringFg.classList.remove('down');
-  }
+  $pct.textContent = pct.toFixed(4) + '%';
 }
 
 // --- Render ---
@@ -97,7 +86,7 @@ function toggleLang() {
   $lang.textContent = lang === 'PL' ? '🇵🇱' : '🇬🇧';
   $daysText.textContent = lang === 'PL'
       ? 'Dni od ostatniego incydentu'
-      : 'Days since last incident';
+      : 'Days since last inchident';
   localStorage.setItem('lang', lang);
   updateCounter();
 }
