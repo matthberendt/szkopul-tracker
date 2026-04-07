@@ -40,9 +40,9 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 100vh;
+    min-height: 70vh;
     padding: 2rem;
-    padding-bottom: 10rem;
+    padding-bottom: 3rem;
     gap: 1.6rem;
 }
 
@@ -144,6 +144,28 @@ body {
 
 .toolbar button:hover {
     border-color: var(--muted);
+}
+
+/* ---- chart ---- */
+#chart-section {
+    width: 100%;
+    max-width: 800px;
+    margin: -1rem auto 0;
+    padding: 0 2rem 6rem;
+}
+
+#chart-title {
+    text-align: center;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 0.6rem;
+    letter-spacing: -0.01em;
+}
+
+#chart-wrap {
+    position: relative;
+    height: 300px;
 }
 
 /* ---- footer ---- */

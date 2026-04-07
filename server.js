@@ -112,4 +112,61 @@ app.get('/api/status', (_req, res) => {
     });
 });
 
+app.get('/api/history', (_req, res) => {
+    const start = new Date(TRACKING_START);
+    const now = new Date();
+    const MS_PER_DAY = 86400000;
+
+    // Build sorted list of downtime intervals
+    const downtimes = db.downtimeRankings.map(d => ({
+        start: new Date(d.start).getTime(),
+        end: new Date(d.end).getTime(),
+    }));
+
+    // If currently down, add ongoing downtime
+    if (!db.isUp) {
+        downtimes.push({
+            start: new Date(db.lastCrashTime).getTime(),
+            end: now.getTime(),
+        });
+    }
+
+    downtimes.sort((a, b) => a.start - b.start);
+
+    const days = [];
+    let dayStart = new Date(start);
+    dayStart.setUTCHours(0, 0, 0, 0);
+
+    while (dayStart.getTime() < now.getTime()) {
+        const dayEnd = Math.min(dayStart.getTime() + MS_PER_DAY, now.getTime());
+        const trackStart = Math.max(dayStart.getTime(), start.getTime());
+
+        if (trackStart >= dayEnd) {
+            dayStart = new Date(dayStart.getTime() + MS_PER_DAY);
+            continue;
+        }
+
+        const dayDuration = dayEnd - trackStart;
+        let downMs = 0;
+
+        for (const d of downtimes) {
+            const overlapStart = Math.max(d.start, trackStart);
+            const overlapEnd = Math.min(d.end, dayEnd);
+            if (overlapStart < overlapEnd) {
+                downMs += overlapEnd - overlapStart;
+            }
+        }
+
+        const uptimePct = ((dayDuration - downMs) / dayDuration) * 100;
+        days.push({
+            date: dayStart.toISOString().slice(0, 10),
+            uptimePercent: Math.round(uptimePct * 100) / 100,
+        });
+
+        dayStart = new Date(dayStart.getTime() + MS_PER_DAY);
+    }
+
+    res.json(days);
+});
+
 app.listen(PORT, () => console.log(`Running on http://localhost:${PORT}`));

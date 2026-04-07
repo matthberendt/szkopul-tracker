@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <title>Szkopuł Status</title>
 </head>
 <body>
@@ -32,6 +34,13 @@
       <span id="minutes"></span>
       <span id="seconds"></span>
     </div>
+  </div>
+</div>
+
+<div id="chart-section">
+  <h3 id="chart-title">Dzienny czas działania</h3>
+  <div id="chart-wrap">
+    <canvas id="uptime-chart"></canvas>
   </div>
 </div>
 
