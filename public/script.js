@@ -89,7 +89,7 @@ function toggleLang() {
   $langLabel.textContent = lang === 'PL' ? 'PL' : 'EN';
   $daysText.textContent = lang === 'PL'
       ? 'Dni od ostatniego incydentu'
-      : 'Days since last inchident';
+      : 'Days since last incident';
   localStorage.setItem('lang', lang);
   updateCounter();
   updateChartTheme();
