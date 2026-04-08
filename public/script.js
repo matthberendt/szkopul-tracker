@@ -2,6 +2,10 @@ const NAMES = [
   'Jan','Piotr','Paweł','Andrzej','Michał','Krzysztof',
   'Tomasz','Marcin','Mateusz','Łukasz','Kamil','Jakub',
   'Wilk','Lis','Niedźwiedź','Chrobry','Śmiały',
+  'Stanisław','Wojciech','Zbigniew','Tadeusz','Kazimierz',
+  'Władysław','Zygmunt','Henryk','Stefan','Bolesław',
+  'Grzegorz','Rafał','Marek','Adam','Bartosz',
+  'Orzeł','Żubr','Ryś','Bóbr','Sokół',
 ];
 
 let lastCrashDate = new Date();
@@ -45,6 +49,15 @@ async function fetchStatus() {
 function updateRing() {
   const pct = Math.min(100, Math.max(0, uptimePercent));
   $pct.textContent = pct.toFixed(4) + '%';
+
+  // Color based on nines: green >=99.99, yellow >=99.9, red <99.9
+  if (pct >= 99.99) {
+    $pct.className = 'uptime-green';
+  } else if (pct >= 99.9) {
+    $pct.className = 'uptime-yellow';
+  } else {
+    $pct.className = 'uptime-red';
+  }
 }
 
 // --- Render ---
@@ -93,6 +106,8 @@ function toggleLang() {
   localStorage.setItem('lang', lang);
   updateCounter();
   updateChartTheme();
+  updateRankingLang();
+  fetchRankings();
 }
 
 function toggleMode() {
@@ -109,10 +124,96 @@ $lang.onclick  = toggleLang;
 // --- Chart ---
 const $chartTitle = document.getElementById('chart-title');
 let uptimeChart = null;
+const CHART_START = '2026-03-31';
+
+// --- Ranking ---
+const $rankingTitle = document.getElementById('ranking-title');
+const $rankingBody = document.getElementById('ranking-body');
+const $rankCol = document.getElementById('rank-col');
+const $daysCol = document.getElementById('days-col');
+const $periodCol = document.getElementById('period-col');
+const $statusCol = document.getElementById('status-col');
+
+async function fetchRankings() {
+  try {
+    const data = await (await fetch('/api/uptime-rankings')).json();
+    renderRankings(data);
+  } catch { /* ignore */ }
+}
+
+function renderRankings(data) {
+  $rankingBody.innerHTML = '';
+  const top = data.slice(0, 10);
+
+  top.forEach((entry, i) => {
+    const days = (entry.durationMs / 864e5).toFixed(1);
+    const startDate = new Date(entry.start).toLocaleDateString(
+      lang === 'PL' ? 'pl-PL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' }
+    );
+    const endDate = entry.ongoing
+      ? (lang === 'PL' ? 'teraz' : 'now')
+      : new Date(entry.end).toLocaleDateString(
+          lang === 'PL' ? 'pl-PL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' }
+        );
+
+    const tr = document.createElement('tr');
+    if (i === 0) tr.classList.add('rank-gold');
+    else if (i === 1) tr.classList.add('rank-silver');
+    else if (i === 2) tr.classList.add('rank-bronze');
+
+    const statusText = entry.ongoing
+      ? (lang === 'PL' ? 'Trwa' : 'Ongoing')
+      : (lang === 'PL' ? 'Zakończony' : 'Ended');
+    const statusClass = entry.ongoing ? 'status-ongoing' : 'status-ended';
+
+    tr.innerHTML = `
+      <td class="rank-num">${i + 1}</td>
+      <td class="rank-days">${days}</td>
+      <td class="rank-period">${startDate} — ${endDate}</td>
+      <td><span class="rank-status ${statusClass}">${statusText}</span></td>
+    `;
+    $rankingBody.appendChild(tr);
+  });
+}
+
+function updateRankingLang() {
+  $rankingTitle.textContent = lang === 'PL'
+    ? 'Najdłuższe okresy bez incydentu'
+    : 'Longest periods without incident';
+  $rankCol.textContent = '#';
+  $daysCol.textContent = lang === 'PL' ? 'Dni' : 'Days';
+  $periodCol.textContent = lang === 'PL' ? 'Okres' : 'Period';
+  $statusCol.textContent = 'Status';
+}
+
+// --- Visitor counter ---
+const $visitorCount = document.getElementById('visitor-count');
+
+async function trackVisit() {
+  try {
+    const data = await (await fetch('/api/visit', { method: 'POST' })).json();
+    $visitorCount.textContent = data.visitors.toLocaleString();
+  } catch {
+    try {
+      const data = await (await fetch('/api/visitors')).json();
+      $visitorCount.textContent = data.visitors.toLocaleString();
+    } catch { /* ignore */ }
+  }
+}
+
+// --- Cloudflare incidents ---
+let cfIncidents = [];
+
+async function fetchCfIncidents() {
+  try {
+    cfIncidents = await (await fetch('/api/cloudflare-incidents')).json();
+  } catch { /* ignore */ }
+}
 
 // --- Init ---
 if (localStorage.getItem('lang') === 'EN') toggleLang();
 if (localStorage.getItem('mode') === 'dark') toggleMode();
+trackVisit();
 
 function getChartColors() {
   const dark = document.body.classList.contains('dark');
@@ -130,15 +231,17 @@ function getChartColors() {
 
 async function fetchHistory() {
   try {
+    await fetchCfIncidents();
     const data = await (await fetch('/api/history')).json();
     renderChart(data);
   } catch { /* ignore */ }
 }
 
-function renderChart(data) {
+function renderChart(rawData) {
   const c = getChartColors();
   const ctx = document.getElementById('uptime-chart').getContext('2d');
 
+  const data = rawData.filter(d => d.date >= CHART_START);
   const labels = data.map(d => d.date);
   const values = data.map(d => d.uptimePercent);
 
@@ -147,6 +250,62 @@ function renderChart(data) {
     const idx = ctx.p1DataIndex;
     return values[idx] < 100 ? c.downLine : c.line;
   };
+
+  // Build Cloudflare incident annotations (use daily date strings to match x-axis)
+  const cfAnnotations = {};
+  const chartStartMs = new Date(CHART_START + 'T00:00:00Z').getTime();
+  const chartEndMs = Date.now();
+  let hasCfAnnotations = false;
+
+  cfIncidents.forEach((inc, i) => {
+    const incStart = new Date(inc.startedAt).getTime();
+    const incEnd = inc.resolvedAt ? new Date(inc.resolvedAt).getTime() : chartEndMs;
+
+    if (incEnd < chartStartMs || incStart > chartEndMs) return;
+
+    // Convert to daily date strings matching the chart's x-axis labels
+    const startDate = new Date(inc.startedAt).toISOString().slice(0, 10);
+    const endDate = inc.resolvedAt
+      ? new Date(inc.resolvedAt).toISOString().slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
+
+    hasCfAnnotations = true;
+
+    const impactColors = {
+      critical: 'rgba(239, 68, 68, 0.20)',
+      major: 'rgba(249, 115, 22, 0.18)',
+      minor: 'rgba(234, 179, 8, 0.15)',
+      none: 'rgba(161, 161, 170, 0.10)',
+    };
+    const borderColors = {
+      critical: 'rgba(239, 68, 68, 0.6)',
+      major: 'rgba(249, 115, 22, 0.5)',
+      minor: 'rgba(234, 179, 8, 0.4)',
+      none: 'rgba(161, 161, 170, 0.3)',
+    };
+
+    cfAnnotations['cf' + i] = {
+      type: 'box',
+      xMin: startDate,
+      xMax: endDate,
+      backgroundColor: impactColors[inc.impact] || impactColors.minor,
+      borderColor: borderColors[inc.impact] || borderColors.minor,
+      borderWidth: 1,
+    };
+  });
+
+  // Update legend text to show count
+  const $legendText = document.getElementById('legend-cf-text');
+  if (hasCfAnnotations) {
+    const count = Object.keys(cfAnnotations).length;
+    $legendText.textContent = lang === 'PL'
+      ? `Awaria Cloudflare (wpływ na Szkopuł) — ${count}`
+      : `Cloudflare outage (affected Szkopuł) — ${count}`;
+  } else {
+    $legendText.textContent = lang === 'PL'
+      ? 'Awaria Cloudflare — brak w tym okresie'
+      : 'Cloudflare outage — none in this period';
+  }
 
   const config = {
     type: 'line',
@@ -177,6 +336,9 @@ function renderChart(data) {
       },
       plugins: {
         legend: { display: false },
+        annotation: {
+          annotations: cfAnnotations,
+        },
         tooltip: {
           backgroundColor: c.tooltip,
           titleColor: c.tooltipText,
@@ -225,10 +387,13 @@ function updateChartTheme() {
     fetchHistory();
   }
   $chartTitle.textContent = lang === 'PL' ? 'Dzienny czas działania' : 'Daily Uptime';
+  // Legend text updates on next chart render via fetchHistory
 }
 
 setInterval(updateCounter, 1000);
 setInterval(fetchStatus, 10_000);
 fetchStatus();
 fetchHistory();
+fetchRankings();
 setInterval(fetchHistory, 60_000);
+setInterval(fetchRankings, 60_000);

@@ -15,6 +15,7 @@ const DEFAULT_DB = {
     lastRecoveryTime: TRACKING_START,
     uptimeRankings: [],
     downtimeRankings: [],
+    visitors: 0,
 };
 
 let db;
@@ -100,6 +101,31 @@ setInterval(checkSzkopul, CHECK_INTERVAL);
 checkSzkopul();
 
 
+// Ensure visitors field exists for older databases
+if (db.visitors === undefined) db.visitors = 0;
+
+// --- Cloudflare incidents cache ---
+let cfIncidentsCache = [];
+let cfLastFetch = 0;
+const CF_CACHE_TTL = 5 * 60 * 1000; // 5 min
+
+async function fetchCloudflareIncidents() {
+    try {
+        const res = await fetch('https://www.cloudflarestatus.com/api/v2/incidents.json');
+        const data = await res.json();
+        cfIncidentsCache = (data.incidents || []).map(inc => ({
+            name: inc.name,
+            impact: inc.impact,
+            status: inc.status,
+            startedAt: inc.started_at,
+            resolvedAt: inc.resolved_at,
+        }));
+        cfLastFetch = Date.now();
+    } catch { /* keep stale cache */ }
+}
+
+fetchCloudflareIncidents();
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/status', (_req, res) => {
@@ -110,6 +136,61 @@ app.get('/api/status', (_req, res) => {
         downtimeCount: db.downtimeRankings.length,
         uptimePercent: getUptimePercent(),
     });
+});
+
+app.get('/api/uptime-rankings', (_req, res) => {
+    const rankings = [...db.uptimeRankings];
+
+    // If currently up, add the ongoing uptime streak
+    if (db.isUp) {
+        const now = new Date();
+        rankings.push({
+            durationMs: now.getTime() - new Date(db.lastRecoveryTime).getTime(),
+            start: db.lastRecoveryTime,
+            end: now.toISOString(),
+            ongoing: true,
+        });
+    }
+
+    rankings.sort((a, b) => b.durationMs - a.durationMs);
+    res.json(rankings);
+});
+
+app.post('/api/visit', (_req, res) => {
+    db.visitors++;
+    saveDB();
+    res.json({ visitors: db.visitors });
+});
+
+app.get('/api/visitors', (_req, res) => {
+    res.json({ visitors: db.visitors });
+});
+
+app.get('/api/cloudflare-incidents', async (_req, res) => {
+    if (Date.now() - cfLastFetch > CF_CACHE_TTL) {
+        await fetchCloudflareIncidents();
+    }
+
+    // Build szkopul downtime intervals
+    const downtimes = db.downtimeRankings.map(d => ({
+        start: new Date(d.start).getTime(),
+        end: new Date(d.end).getTime(),
+    }));
+    if (!db.isUp) {
+        downtimes.push({
+            start: new Date(db.lastCrashTime).getTime(),
+            end: Date.now(),
+        });
+    }
+
+    // Only return CF incidents that overlap with a szkopul downtime
+    const filtered = cfIncidentsCache.filter(inc => {
+        const incStart = new Date(inc.startedAt).getTime();
+        const incEnd = inc.resolvedAt ? new Date(inc.resolvedAt).getTime() : Date.now();
+        return downtimes.some(d => incStart < d.end && incEnd > d.start);
+    });
+
+    res.json(filtered);
 });
 
 app.get('/api/history', (_req, res) => {

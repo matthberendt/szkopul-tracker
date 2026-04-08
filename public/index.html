@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
   <title>Szkopuł Status</title>
 </head>
 <body>
@@ -34,7 +35,6 @@
     </div>
   </div>
 
-  <span id="monitoring-since" class="monitoring-since">Monitorowanie od 31 marca</span>
 </div>
 
 <div id="chart-section">
@@ -43,7 +43,38 @@
     <div id="chart-wrap">
       <canvas id="uptime-chart"></canvas>
     </div>
+    <div id="chart-legend">
+      <span class="legend-item">
+        <span class="legend-swatch legend-cf"></span>
+        <span id="legend-cf-text">Awaria Cloudflare (wpływ na Szkopuł)</span>
+      </span>
+    </div>
   </div>
+</div>
+
+<div id="ranking-section">
+  <h3 id="ranking-title">Najdłuższe okresy bez incydentu</h3>
+  <div id="ranking-card">
+    <table id="ranking-table">
+      <thead>
+        <tr>
+          <th id="rank-col">#</th>
+          <th id="days-col">Dni</th>
+          <th id="period-col">Okres</th>
+          <th id="status-col">Status</th>
+        </tr>
+      </thead>
+      <tbody id="ranking-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="visitor-counter">
+  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>
+  <span id="visitor-count">0</span>
 </div>
 
 <div class="bottom-controls">
