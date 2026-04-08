@@ -1,44 +1,40 @@
 # czywyjebalohomika.xyz
 
-> The only monitoring tool that matters for Polish competitive programmers.
-
 🌐 **Live site:** [czywyjebalohomika.xyz](https://czywyjebalohomika.xyz)
 
 ---
 
 ## What is this?
 
-A dead simple status checker for [szkopul.edu.pl](https://szkopul.edu.pl) the Polish competitive programming judge that has a... complicated relationship with uptime.
+A status website for [szkopul.edu.pl](https://szkopul.edu.pl), it's commonly known in the community for having outages. This website tracks, ranks and notifies of outages.
 
-You know the drill. It's 11 PM, the contest ends in an hour, you're trying to submit, and szkopul is just gone. No explanation. No ETA. Just vibes.
-
-**czywyjebalohomika.xyz** answers the one question that unites every Polish OI contestant:
-
-### *czy wyjebal o homika?*
+### *czy wyjebalo homika?*
 
 ## Features
 
 - Tells you if szkopul is up
-- Tells you if szkopul is down (the more common outcome)
-- Shows how long it's been down for (for the full grief experience)
-- No slop. No dashboard. No enterprise pricing tiers.
+- Tells you if szkopul is down
+- Shows how long it's been down for
+- Ranks the downtimes
 
 ## Tech stack
 
-- **Node.js** because someone had to write this and it wasn't going to be in Java
-
+- **Node.js**
+  
 ## Running locally
 
 ```bash
 git clone https://github.com/matthberendt/szkopul-tracker
-cd czywyjebalohomika
+cd szkopul-tracker
 npm install
-npm start
+npm install pm2
+pm2 start server.js --name "szkopul-tracker"
 ```
+DEFAULT PORT: 3000
 
 ## Contributing
 
-If szkopul being down has personally wronged you, you're welcome here. PRs open.
+Feel free to contribiute.
 
 ## License
 
