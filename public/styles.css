@@ -12,6 +12,8 @@
     --dot-up: #22c55e;
     --dot-down: #ef4444;
     --badge-bg: rgba(0,0,0,0.04);
+    --card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --icon-color: #71717a;
 }
 
 body.dark {
@@ -22,6 +24,8 @@ body.dark {
     --border: #27272a;
     --ring-bg: #27272a;
     --badge-bg: rgba(255,255,255,0.06);
+    --card-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+    --icon-color: #a1a1aa;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,6 +36,7 @@ body {
     color: var(--fg);
     transition: background 0.3s, color 0.3s;
     min-height: 100vh;
+    padding: 1.5rem;
 }
 
 /* ---- layout ---- */
@@ -40,9 +45,8 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 70vh;
-    padding: 2rem;
-    padding-bottom: 3rem;
+    min-height: 60vh;
+    padding: 2rem 1rem;
     gap: 1.6rem;
 }
 
@@ -69,6 +73,21 @@ body {
 
 #status-dot.down { background: var(--dot-down); }
 
+/* ---- uptime card ---- */
+#uptime-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem 2.5rem;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.4rem;
+    width: 100%;
+    max-width: 420px;
+}
+
 /* ---- uptime label ---- */
 #uptime-label {
     display: flex;
@@ -89,7 +108,7 @@ body {
     color: var(--muted);
 }
 
-/* ---- counter card ---- */
+/* ---- counter ---- */
 #counter {
     text-align: center;
     display: flex;
@@ -121,37 +140,12 @@ body {
     font-variant-numeric: tabular-nums;
 }
 
-/* ---- toolbar ---- */
-.toolbar {
-    position: fixed;
-    top: 16px;
-    right: 16px;
-    display: flex;
-    gap: 6px;
-    z-index: 10;
-}
-
-.toolbar button {
-    width: 40px;
-    height: 40px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    font-size: 1.1rem;
-    cursor: pointer;
-    background: var(--card);
-    transition: background 0.2s, border-color 0.2s;
-}
-
-.toolbar button:hover {
-    border-color: var(--muted);
-}
-
 /* ---- chart ---- */
 #chart-section {
     width: 100%;
     max-width: 800px;
-    margin: -1rem auto 0;
-    padding: 0 2rem 6rem;
+    margin: 0 auto;
+    padding: 0 0 2rem;
 }
 
 #chart-title {
@@ -159,8 +153,16 @@ body {
     font-size: 0.95rem;
     font-weight: 600;
     color: var(--muted);
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.8rem;
     letter-spacing: -0.01em;
+}
+
+#chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem;
+    box-shadow: var(--card-shadow);
 }
 
 #chart-wrap {
@@ -168,12 +170,125 @@ body {
     height: 300px;
 }
 
-/* ---- footer ---- */
-footer {
-    position: fixed;
-    bottom: 16px;
-    width: 100%;
-    text-align: center;
+/* ---- bottom controls ---- */
+.bottom-controls {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1.5rem 0 1rem;
+}
+
+.bottom-controls button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 40px;
+    padding: 0 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    background: var(--card);
+    color: var(--icon-color);
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.bottom-controls button:hover {
+    border-color: var(--muted);
+}
+
+.bottom-controls button svg {
+    stroke: var(--icon-color);
+    flex-shrink: 0;
+}
+
+.bottom-controls #lang-label {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 600;
     font-size: 0.75rem;
-    color: var(--muted);
+    letter-spacing: 0.04em;
+    color: var(--icon-color);
+}
+
+.hidden { display: none !important; }
+
+/* ---- mobile ---- */
+@media (max-width: 640px) {
+    body {
+        padding: 1rem;
+    }
+
+    #app {
+        min-height: 50vh;
+        padding: 1.5rem 0.5rem;
+        gap: 1.2rem;
+    }
+
+    #uptime-card {
+        padding: 1.5rem 1.25rem;
+        border-radius: 12px;
+    }
+
+    #uptime-pct {
+        font-size: 1.3rem;
+    }
+
+    #days-since {
+        font-size: 2.4rem;
+    }
+
+    #days-since-text {
+        font-size: 0.78rem;
+    }
+
+    #hms {
+        gap: 0.8rem;
+        font-size: 0.75rem;
+    }
+
+    #chart-section {
+        padding: 0 0 1.5rem;
+    }
+
+    #chart-card {
+        padding: 0.75rem;
+        border-radius: 12px;
+    }
+
+    #chart-wrap {
+        height: 220px;
+    }
+
+    #chart-title {
+        font-size: 0.85rem;
+    }
+
+    .bottom-controls {
+        padding: 1rem 0 0.5rem;
+    }
+
+    .bottom-controls button {
+        height: 36px;
+        padding: 0 12px;
+    }
+}
+
+@media (max-width: 380px) {
+    #uptime-card {
+        padding: 1.25rem 1rem;
+    }
+
+    #days-since {
+        font-size: 2rem;
+    }
+
+    #hms {
+        flex-wrap: wrap;
+        gap: 0.4rem 1rem;
+    }
+
+    #chart-wrap {
+        height: 180px;
+    }
 }

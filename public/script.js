@@ -21,6 +21,9 @@ const $seconds  = document.getElementById('seconds');
 const $counter  = document.getElementById('counter');
 const $color    = document.getElementById('color');
 const $lang     = document.getElementById('lang');
+const $langLabel = document.getElementById('lang-label');
+const $iconSun  = document.getElementById('icon-sun');
+const $iconMoon = document.getElementById('icon-moon');
 const $pct      = document.getElementById('uptime-pct');
 
 // --- Fetch ---
@@ -83,7 +86,7 @@ function updateCounter() {
 // --- Controls ---
 function toggleLang() {
   lang = lang === 'PL' ? 'EN' : 'PL';
-  $lang.textContent = lang === 'PL' ? '🇵🇱' : '🇬🇧';
+  $langLabel.textContent = lang === 'PL' ? 'PL' : 'EN';
   $daysText.textContent = lang === 'PL'
       ? 'Dni od ostatniego incydentu'
       : 'Days since last inchident';
@@ -94,7 +97,8 @@ function toggleLang() {
 
 function toggleMode() {
   const dark = document.body.classList.toggle('dark');
-  $color.textContent = dark ? '🌙' : '☀️';
+  $iconSun.classList.toggle('hidden', dark);
+  $iconMoon.classList.toggle('hidden', !dark);
   localStorage.setItem('mode', dark ? 'dark' : 'light');
   updateChartTheme();
 }
