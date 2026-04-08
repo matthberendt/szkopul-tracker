@@ -5,6 +5,7 @@ const fs = require('fs');
 const app = express();
 const PORT = 3000;
 const DB_FILE = path.join(__dirname, 'database.json');
+const DB_TMP = path.join(__dirname, `.database.json.${process.pid}.tmp`);
 const CHECK_INTERVAL = 30_000;
 const FETCH_TIMEOUT = 15_000;
 const TRACKING_START = '2026-01-27T12:13:00Z';
@@ -27,7 +28,9 @@ try {
 }
 
 function saveDB() {
-    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+    const data = JSON.stringify(db, null, 2);
+    fs.writeFileSync(DB_TMP, data);
+    fs.renameSync(DB_TMP, DB_FILE);
 }
 
 function getUptimePercent() {
@@ -250,4 +253,19 @@ app.get('/api/history', (_req, res) => {
     res.json(days);
 });
 
-app.listen(PORT, () => console.log(`Running on http://localhost:${PORT}`));
+const server = app.listen(PORT, () => console.log(`Running on http://localhost:${PORT}`));
+
+// --- Graceful shutdown for PM2 / process signals ---
+function shutdown(signal) {
+    console.log(`Received ${signal}, saving state and shutting down…`);
+    saveDB();
+    server.close(() => {
+        console.log('Server closed.');
+        process.exit(0);
+    });
+    // Force exit if server hasn't closed within 5s
+    setTimeout(() => process.exit(0), 5000);
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
