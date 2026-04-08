@@ -36,7 +36,7 @@ body {
     color: var(--fg);
     transition: background 0.3s, color 0.3s;
     min-height: 100vh;
-    padding: 0.75rem;
+    padding: 2.5rem;
 }
 
 /* ---- layout ---- */
@@ -152,7 +152,7 @@ body {
 #chart-section {
     width: 100%;
     max-width: 800px;
-    margin: 0 auto;
+    margin: 2rem auto 0;
     padding: 0 0 2rem;
 }
 
@@ -365,7 +365,7 @@ body {
 /* ---- mobile ---- */
 @media (max-width: 640px) {
     body {
-        padding: 1rem;
+        padding: 1.25rem;
     }
 
     #app {
@@ -397,6 +397,7 @@ body {
     }
 
     #chart-section {
+        margin-top: 1.5rem;
         padding: 0 0 1.5rem;
     }
 
