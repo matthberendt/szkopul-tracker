@@ -15,7 +15,7 @@ const DEFAULT_DB = {
     lastRecoveryTime: TRACKING_START,
     uptimeRankings: [],
     downtimeRankings: [],
-    visitors: 0,
+    visitors: 1320,
 };
 
 let db;
@@ -102,7 +102,7 @@ checkSzkopul();
 
 
 // Ensure visitors field exists for older databases
-if (db.visitors === undefined) db.visitors = 0;
+if (db.visitors === undefined) db.visitors = 1320;
 
 // --- Cloudflare incidents cache ---
 let cfIncidentsCache = [];
