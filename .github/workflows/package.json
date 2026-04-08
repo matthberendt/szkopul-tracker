@@ -1,0 +1,11 @@
+{
+  "name": "szkopul-tracker",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"No tests yet\" && exit 0" 
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}
