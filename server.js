@@ -129,7 +129,17 @@ async function fetchCloudflareIncidents() {
 
 fetchCloudflareIncidents();
 
+const API_KEY = process.env.API_KEY || 'APIKEY';
+
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/api/database/', (req, res) => {
+    const key = req.headers['x-api-key'] || req.query.key;
+    if (key !== API_KEY) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    res.json(db);
+});
 
 app.get('/api/status', (_req, res) => {
     res.json({
