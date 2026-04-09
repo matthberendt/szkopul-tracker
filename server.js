@@ -8,7 +8,7 @@ const DB_FILE = path.join(__dirname, 'database.json');
 const DB_TMP = path.join(__dirname, `.database.json.${process.pid}.tmp`);
 const CHECK_INTERVAL = 30_000;
 const FETCH_TIMEOUT = 15_000;
-const TRACKING_START = '2026-01-27T12:13:00Z';
+const TRACKING_START = '2026-03-31T12:00:00Z';
 
 const DEFAULT_DB = {
     isUp: true,
@@ -133,9 +133,9 @@ const API_KEY = process.env.API_KEY || 'APIKEY';
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/api/database/', (req, res) => {
+app.get('/api/database', (req, res) => {
     const key = req.headers['x-api-key'] || req.query.key;
-    if (key !== API_KEY) {
+    if (!key || key.trim() !== API_KEY.trim()) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
     res.json(db);
@@ -265,10 +265,8 @@ app.get('/api/history', (_req, res) => {
 
 const server = app.listen(PORT, () => console.log(`Running on http://localhost:${PORT}`));
 
-// --- Graceful shutdown for PM2 / process signals ---
 function shutdown(signal) {
     console.log(`Received ${signal}, saving state and shutting down…`);
-    saveDB();
     server.close(() => {
         console.log('Server closed.');
         process.exit(0);
