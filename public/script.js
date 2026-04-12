@@ -8,6 +8,7 @@ const NAMES = [
   'Orzeł','Żubr','Ryś','Bóbr','Sokół',
 ];
 
+let currentSite = 'szkopul';
 let lastCrashDate = new Date();
 let isCrashed = false;
 let crashCount = 0;
@@ -29,11 +30,12 @@ const $langLabel = document.getElementById('lang-label');
 const $iconSun  = document.getElementById('icon-sun');
 const $iconMoon = document.getElementById('icon-moon');
 const $pct      = document.getElementById('uptime-pct');
+const $tabs     = document.querySelectorAll('.site-tab');
 
 // --- Fetch ---
 async function fetchStatus() {
   try {
-    const data = await (await fetch('/api/status')).json();
+    const data = await (await fetch(`/api/status?site=${currentSite}`)).json();
     isCrashed = !data.isUp;
     lastCrashDate = new Date(data.lastCrashTime);
     crashCount = data.downtimeCount;
@@ -50,7 +52,6 @@ function updateRing() {
   const pct = Math.min(100, Math.max(0, uptimePercent));
   $pct.textContent = pct.toFixed(4) + '%';
 
-  // Color based on nines: green >=99.99, yellow >=99.9, red <99.9
   if (pct >= 99.99) {
     $pct.className = 'uptime-green';
   } else if (pct >= 99.9) {
@@ -81,17 +82,20 @@ function updateCounter() {
 
   const name = NAMES[crashCount % NAMES.length];
 
+  const nounPL = currentSite === 'szkopul' ? 'Chomik' : 'Żołnierz';
+  const nounEN = currentSite === 'szkopul' ? 'Hamster' : 'Soldier';
+
   if (isCrashed) {
     $dot.classList.add('down');
     $status.textContent = lang === 'PL'
-        ? `Chomik nr.${crashCount}, pseudonim ${name}, umarł.`
-        : `Hamster nr.${crashCount}, codename ${name}, has died.`;
+        ? `${nounPL} nr.${crashCount}, pseudonim ${name}, umarł.`
+        : `${nounEN} nr.${crashCount}, codename ${name}, has died.`;
     $counter.hidden = true;
   } else {
     $dot.classList.remove('down');
     $status.textContent = lang === 'PL'
-        ? `Chomik nr.${crashCount}, pracuje ile może`
-        : `Hamster nr.${crashCount}, is working hard`;
+        ? `${nounPL} nr.${crashCount}, pracuje ile może`
+        : `${nounEN} nr.${crashCount}, is working hard`;
     $counter.hidden = false;
   }
 }
@@ -121,10 +125,25 @@ function toggleMode() {
 $color.onclick = toggleMode;
 $lang.onclick  = toggleLang;
 
+$tabs.forEach(tab => {
+  tab.onclick = () => {
+    if (tab.classList.contains('active')) return;
+    $tabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentSite = tab.dataset.site;
+    refreshAll();
+  };
+});
+
+function refreshAll() {
+  fetchStatus();
+  fetchHistory();
+  fetchRankings();
+}
+
 // --- Chart ---
 const $chartTitle = document.getElementById('chart-title');
 let uptimeChart = null;
-const CHART_START = '2026-03-31';
 
 // --- Ranking ---
 const $rankingTitle = document.getElementById('ranking-title');
@@ -136,7 +155,7 @@ const $statusCol = document.getElementById('status-col');
 
 async function fetchRankings() {
   try {
-    const data = await (await fetch('/api/uptime-rankings')).json();
+    const data = await (await fetch(`/api/uptime-rankings?site=${currentSite}`)).json();
     renderRankings(data);
   } catch { /* ignore */ }
 }
@@ -206,7 +225,7 @@ let cfIncidents = [];
 
 async function fetchCfIncidents() {
   try {
-    cfIncidents = await (await fetch('/api/cloudflare-incidents')).json();
+    cfIncidents = await (await fetch(`/api/cloudflare-incidents?site=${currentSite}`)).json();
   } catch { /* ignore */ }
 }
 
@@ -232,7 +251,7 @@ function getChartColors() {
 async function fetchHistory() {
   try {
     await fetchCfIncidents();
-    const data = await (await fetch('/api/history')).json();
+    const data = await (await fetch(`/api/history?site=${currentSite}`)).json();
     renderChart(data);
   } catch { /* ignore */ }
 }
@@ -241,9 +260,8 @@ function renderChart(rawData) {
   const c = getChartColors();
   const ctx = document.getElementById('uptime-chart').getContext('2d');
 
-  const data = rawData.filter(d => d.date >= CHART_START);
-  const labels = data.map(d => d.date);
-  const values = data.map(d => d.uptimePercent);
+  const labels = rawData.map(d => d.date);
+  const values = rawData.map(d => d.uptimePercent);
 
   // Color segments: green for 100%, red-ish for <100%
   const segmentColor = (ctx) => {
@@ -251,19 +269,12 @@ function renderChart(rawData) {
     return values[idx] < 100 ? c.downLine : c.line;
   };
 
-  // Build Cloudflare incident annotations (use daily date strings to match x-axis)
+  // Build Cloudflare incident annotations
   const cfAnnotations = {};
-  const chartStartMs = new Date(CHART_START + 'T00:00:00Z').getTime();
   const chartEndMs = Date.now();
   let hasCfAnnotations = false;
 
   cfIncidents.forEach((inc, i) => {
-    const incStart = new Date(inc.startedAt).getTime();
-    const incEnd = inc.resolvedAt ? new Date(inc.resolvedAt).getTime() : chartEndMs;
-
-    if (incEnd < chartStartMs || incStart > chartEndMs) return;
-
-    // Convert to daily date strings matching the chart's x-axis labels
     const startDate = new Date(inc.startedAt).toISOString().slice(0, 10);
     const endDate = inc.resolvedAt
       ? new Date(inc.resolvedAt).toISOString().slice(0, 10)
@@ -294,17 +305,18 @@ function renderChart(rawData) {
     };
   });
 
-  // Update legend text to show count
+  // Update legend text
   const $legendText = document.getElementById('legend-cf-text');
+  const siteName = currentSite === 'szkopul' ? 'Szkopuł' : 'Codeforces';
   if (hasCfAnnotations) {
     const count = Object.keys(cfAnnotations).length;
     $legendText.textContent = lang === 'PL'
-      ? `Awaria Cloudflare (wpływ na Szkopuł) — ${count}`
-      : `Cloudflare outage (affected Szkopuł) — ${count}`;
+      ? `Awaria Cloudflare (wpływ na ${siteName}) — ${count}`
+      : `Cloudflare outage (affected ${siteName}) — ${count}`;
   } else {
     $legendText.textContent = lang === 'PL'
-      ? 'Awaria Cloudflare — brak w tym okresie'
-      : 'Cloudflare outage — none in this period';
+      ? `Awaria Cloudflare — brak w tym okresie`
+      : `Cloudflare outage — none in this period`;
   }
 
   const config = {
@@ -318,7 +330,7 @@ function renderChart(rawData) {
         backgroundColor: c.fill,
         fill: true,
         tension: 0.3,
-        pointRadius: data.length > 60 ? 0 : 3,
+        pointRadius: rawData.length > 60 ? 0 : 3,
         pointHoverRadius: 5,
         pointBackgroundColor: c.point,
         borderWidth: 2,
@@ -387,13 +399,10 @@ function updateChartTheme() {
     fetchHistory();
   }
   $chartTitle.textContent = lang === 'PL' ? 'Dzienny czas działania' : 'Daily Uptime';
-  // Legend text updates on next chart render via fetchHistory
 }
 
 setInterval(updateCounter, 1000);
 setInterval(fetchStatus, 10_000);
-fetchStatus();
-fetchHistory();
-fetchRankings();
+refreshAll();
 setInterval(fetchHistory, 60_000);
 setInterval(fetchRankings, 60_000);

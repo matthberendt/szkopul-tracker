@@ -8,11 +8,21 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
-  <title>Szkopuł Status</title>
+  <title>Homik Tracker</title>
 </head>
 <body>
 
+<div id="logo-container">
+  <div id="logo">Homik Tracker</div>
+  <div id="logo-credits">by Lcd101 & contributors</div>
+</div>
+
 <div id="app">
+  <div id="site-selector">
+    <button class="site-tab active" data-site="szkopul">Szkopuł</button>
+    <button class="site-tab" data-site="codeforces">Codeforces</button>
+  </div>
+
   <div id="status-badge">
     <span id="status-dot"></span>
     <span id="status">Loading…</span>

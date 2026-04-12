@@ -37,6 +37,29 @@ body {
     transition: background 0.3s, color 0.3s;
     min-height: 100vh;
     padding: 2.5rem;
+    position: relative;
+}
+
+#logo-container {
+    position: absolute;
+    top: 2.5rem;
+    right: 2.5rem;
+    text-align: right;
+    user-select: none;
+}
+
+#logo {
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--fg);
+    opacity: 0.9;
+}
+
+#logo-credits {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 0.1rem;
 }
 
 /* ---- layout ---- */
@@ -46,7 +69,38 @@ body {
     align-items: center;
     justify-content: center;
     padding: 1rem 0.5rem 0.5rem;
-    gap: 1rem;
+    gap: 1.5rem;
+}
+
+/* ---- site selector ---- */
+#site-selector {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.25rem;
+    background: var(--badge-bg);
+    border-radius: 12px;
+}
+
+.site-tab {
+    padding: 0.5rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 9px;
+    transition: all 0.2s;
+}
+
+.site-tab.active {
+    background: var(--card);
+    color: var(--fg);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.site-tab:hover:not(.active) {
+    color: var(--fg);
 }
 
 /* ---- status badge ---- */
@@ -366,6 +420,19 @@ body {
 @media (max-width: 640px) {
     body {
         padding: 1.25rem;
+    }
+
+    #logo-container {
+        top: 1.25rem;
+        right: 1.25rem;
+    }
+
+    #logo {
+        font-size: 0.95rem;
+    }
+
+    #logo-credits {
+        font-size: 0.65rem;
     }
 
     #app {

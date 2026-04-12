@@ -8,20 +8,49 @@ const DB_FILE = path.join(__dirname, 'database.json');
 const DB_TMP = path.join(__dirname, `.database.json.${process.pid}.tmp`);
 const CHECK_INTERVAL = 30_000;
 const FETCH_TIMEOUT = 15_000;
-const TRACKING_START = '2026-03-31T12:00:00Z';
 
-const DEFAULT_DB = {
+const SZKOPUL_START = '2026-03-31T12:00:00Z';
+const CODEFORCES_START = '2026-04-12T12:00:00Z';
+
+const DEFAULT_SITE_DATA = (start) => ({
     isUp: true,
-    lastCrashTime: TRACKING_START,
-    lastRecoveryTime: TRACKING_START,
+    lastCrashTime: start,
+    lastRecoveryTime: start,
     uptimeRankings: [],
     downtimeRankings: [],
+    trackingStart: start,
+});
+
+const DEFAULT_DB = {
+    sites: {
+        szkopul: DEFAULT_SITE_DATA(SZKOPUL_START),
+        codeforces: DEFAULT_SITE_DATA(CODEFORCES_START),
+    },
     visitors: 1320,
 };
 
 let db;
 try {
     db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    // Migration: if it's the old format, convert to new format
+    if (!db.sites) {
+        const oldDB = db;
+        db = {
+            sites: {
+                szkopul: {
+                    isUp: oldDB.isUp ?? true,
+                    lastCrashTime: oldDB.lastCrashTime ?? SZKOPUL_START,
+                    lastRecoveryTime: oldDB.lastRecoveryTime ?? SZKOPUL_START,
+                    uptimeRankings: oldDB.uptimeRankings ?? [],
+                    downtimeRankings: oldDB.downtimeRankings ?? [],
+                    trackingStart: SZKOPUL_START,
+                },
+                codeforces: DEFAULT_SITE_DATA(CODEFORCES_START),
+            },
+            visitors: oldDB.visitors ?? 1320,
+        };
+        saveDB();
+    }
 } catch {
     db = { ...DEFAULT_DB };
     saveDB();
@@ -33,39 +62,52 @@ function saveDB() {
     fs.renameSync(DB_TMP, DB_FILE);
 }
 
-function getUptimePercent() {
+function getUptimePercent(siteKey) {
+    const site = db.sites[siteKey];
+    if (!site) return 0;
+
     const now = Date.now();
-    const totalMs = now - new Date(TRACKING_START).getTime();
+    const totalMs = now - new Date(site.trackingStart).getTime();
     if (totalMs <= 0) return 100;
 
     let downtimeMs = 0;
-    for (const d of db.downtimeRankings) {
+    for (const d of site.downtimeRankings) {
         downtimeMs += d.durationMs;
     }
 
-    // if currently down, add ongoing downtime
-    if (!db.isUp) {
-        downtimeMs += now - new Date(db.lastCrashTime).getTime();
+    if (!site.isUp) {
+        downtimeMs += now - new Date(site.lastCrashTime).getTime();
     }
 
     const pct = ((totalMs - downtimeMs) / totalMs) * 100;
     return Math.max(0, Math.min(100, pct));
 }
 
-async function isHealthy() {
+async function isHealthy(siteKey) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
 
     try {
-        const res = await fetch('https://szkopul.edu.pl/problemset/', {
+        let url, checkString;
+        if (siteKey === 'szkopul') {
+            url = 'https://szkopul.edu.pl/problemset/';
+            checkString = 'problemset';
+        } else if (siteKey === 'codeforces') {
+            url = 'https://codeforces.com/';
+            checkString = 'Codeforces';
+        } else {
+            return false;
+        }
+
+        const res = await fetch(url, {
             signal: controller.signal,
-            headers: { 'User-Agent': 'Szkopul-Uptime-Tracker/2.0' },
+            headers: { 'User-Agent': 'Status-Tracker/2.0' },
         });
 
         if (!res.ok) return false;
 
         const body = await res.text();
-        return body.includes('problemset') || body.includes('Szkopuł');
+        return body.includes(checkString);
     } catch {
         return false;
     } finally {
@@ -73,39 +115,41 @@ async function isHealthy() {
     }
 }
 
-async function checkSzkopul() {
-    const up = await isHealthy();
+async function checkSite(siteKey) {
+    const up = await isHealthy(siteKey);
+    const site = db.sites[siteKey];
     const now = new Date();
 
-    if (up && !db.isUp) {
-        db.isUp = true;
-        db.downtimeRankings.push({
-            durationMs: now - new Date(db.lastCrashTime),
-            start: db.lastCrashTime,
+    if (up && !site.isUp) {
+        site.isUp = true;
+        site.downtimeRankings.push({
+            durationMs: now - new Date(site.lastCrashTime),
+            start: site.lastCrashTime,
             end: now.toISOString(),
         });
-        db.downtimeRankings.sort((a, b) => b.durationMs - a.durationMs);
-        db.lastRecoveryTime = now.toISOString();
+        site.downtimeRankings.sort((a, b) => b.durationMs - a.durationMs);
+        site.lastRecoveryTime = now.toISOString();
         saveDB();
-    } else if (!up && db.isUp) {
-        db.isUp = false;
-        db.uptimeRankings.push({
-            durationMs: now - new Date(db.lastRecoveryTime),
-            start: db.lastRecoveryTime,
+    } else if (!up && site.isUp) {
+        site.isUp = false;
+        site.uptimeRankings.push({
+            durationMs: now - new Date(site.lastRecoveryTime),
+            start: site.lastRecoveryTime,
             end: now.toISOString(),
         });
-        db.uptimeRankings.sort((a, b) => b.durationMs - a.durationMs);
-        db.lastCrashTime = now.toISOString();
+        site.uptimeRankings.sort((a, b) => b.durationMs - a.durationMs);
+        site.lastCrashTime = now.toISOString();
         saveDB();
     }
 }
 
-setInterval(checkSzkopul, CHECK_INTERVAL);
-checkSzkopul();
+async function checkAll() {
+    await checkSite('szkopul');
+    await checkSite('codeforces');
+}
 
-
-// Ensure visitors field exists for older databases
-if (db.visitors === undefined) db.visitors = 1320;
+setInterval(checkAll, CHECK_INTERVAL);
+checkAll();
 
 // --- Cloudflare incidents cache ---
 let cfIncidentsCache = [];
@@ -141,25 +185,32 @@ app.get('/api/database', (req, res) => {
     res.json(db);
 });
 
-app.get('/api/status', (_req, res) => {
+app.get('/api/status', (req, res) => {
+    const siteKey = req.query.site || 'szkopul';
+    const site = db.sites[siteKey];
+    if (!site) return res.status(404).json({ error: 'Site not found' });
+
     res.json({
-        isUp: db.isUp,
-        lastCrashTime: db.lastCrashTime,
-        lastRecoveryTime: db.lastRecoveryTime,
-        downtimeCount: db.downtimeRankings.length,
-        uptimePercent: getUptimePercent(),
+        isUp: site.isUp,
+        lastCrashTime: site.lastCrashTime,
+        lastRecoveryTime: site.lastRecoveryTime,
+        downtimeCount: site.downtimeRankings.length,
+        uptimePercent: getUptimePercent(siteKey),
     });
 });
 
-app.get('/api/uptime-rankings', (_req, res) => {
-    const rankings = [...db.uptimeRankings];
+app.get('/api/uptime-rankings', (req, res) => {
+    const siteKey = req.query.site || 'szkopul';
+    const site = db.sites[siteKey];
+    if (!site) return res.status(404).json({ error: 'Site not found' });
 
-    // If currently up, add the ongoing uptime streak
-    if (db.isUp) {
+    const rankings = [...site.uptimeRankings];
+
+    if (site.isUp) {
         const now = new Date();
         rankings.push({
-            durationMs: now.getTime() - new Date(db.lastRecoveryTime).getTime(),
-            start: db.lastRecoveryTime,
+            durationMs: now.getTime() - new Date(site.lastRecoveryTime).getTime(),
+            start: site.lastRecoveryTime,
             end: now.toISOString(),
             ongoing: true,
         });
@@ -179,24 +230,26 @@ app.get('/api/visitors', (_req, res) => {
     res.json({ visitors: db.visitors });
 });
 
-app.get('/api/cloudflare-incidents', async (_req, res) => {
+app.get('/api/cloudflare-incidents', async (req, res) => {
+    const siteKey = req.query.site || 'szkopul';
+    const site = db.sites[siteKey];
+    if (!site) return res.status(404).json({ error: 'Site not found' });
+
     if (Date.now() - cfLastFetch > CF_CACHE_TTL) {
         await fetchCloudflareIncidents();
     }
 
-    // Build szkopul downtime intervals
-    const downtimes = db.downtimeRankings.map(d => ({
+    const downtimes = site.downtimeRankings.map(d => ({
         start: new Date(d.start).getTime(),
         end: new Date(d.end).getTime(),
     }));
-    if (!db.isUp) {
+    if (!site.isUp) {
         downtimes.push({
-            start: new Date(db.lastCrashTime).getTime(),
+            start: new Date(site.lastCrashTime).getTime(),
             end: Date.now(),
         });
     }
 
-    // Only return CF incidents that overlap with a szkopul downtime
     const filtered = cfIncidentsCache.filter(inc => {
         const incStart = new Date(inc.startedAt).getTime();
         const incEnd = inc.resolvedAt ? new Date(inc.resolvedAt).getTime() : Date.now();
@@ -206,21 +259,23 @@ app.get('/api/cloudflare-incidents', async (_req, res) => {
     res.json(filtered);
 });
 
-app.get('/api/history', (_req, res) => {
-    const start = new Date(TRACKING_START);
+app.get('/api/history', (req, res) => {
+    const siteKey = req.query.site || 'szkopul';
+    const site = db.sites[siteKey];
+    if (!site) return res.status(404).json({ error: 'Site not found' });
+
+    const start = new Date(site.trackingStart);
     const now = new Date();
     const MS_PER_DAY = 86400000;
 
-    // Build sorted list of downtime intervals
-    const downtimes = db.downtimeRankings.map(d => ({
+    const downtimes = site.downtimeRankings.map(d => ({
         start: new Date(d.start).getTime(),
         end: new Date(d.end).getTime(),
     }));
 
-    // If currently down, add ongoing downtime
-    if (!db.isUp) {
+    if (!site.isUp) {
         downtimes.push({
-            start: new Date(db.lastCrashTime).getTime(),
+            start: new Date(site.lastCrashTime).getTime(),
             end: now.getTime(),
         });
     }
@@ -271,7 +326,6 @@ function shutdown(signal) {
         console.log('Server closed.');
         process.exit(0);
     });
-    // Force exit if server hasn't closed within 5s
     setTimeout(() => process.exit(0), 5000);
 }
 
